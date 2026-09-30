@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.10-SNAPSHOT'
+    id 'net.fabricmc.fabric-loom' version '1.18.2'
     id 'maven-publish'
 }
 
@@ -19,14 +19,14 @@ repositories {
 dependencies {
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
         // Fabric API. This is technically optional, but you probably want it anyway.
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-    modImplementation include("eu.pb4:player-data-api:${project.player_data_api_version}")
-    modCompileOnly ("maven.modrinth:styled-chat:${project.styled_chat_version}")
-    }
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation include("eu.pb4:player-data-api:${project.player_data_api_version}")
+    implementation "maven.modrinth:styled-chat:${project.styled_chat_version}"
+    implementation "eu.pb4:placeholder-api:${project.placeholder_api_version}"
+}
 
 processResources {
     inputs.property "version", project.version
@@ -41,7 +41,7 @@ processResources {
     }
 }
 
-def targetJavaVersion = 21
+def targetJavaVersion = 25
 tasks.withType(JavaCompile).configureEach {
     // ensure that the encoding is set to UTF-8, no matter what the system default is
     // this fixes some edge cases with special characters not displaying correctly
@@ -58,16 +58,55 @@ java {
     if (JavaVersion.current() < javaVersion) {
         toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
     }
-    archivesBaseName = project.archives_base_name
-    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-    // if it is present.
-    // If you remove this line, sources will not be generated.
     withSourcesJar()
 }
 
+base {
+    archivesName = project.archives_base_name
+}
+
+sourceSets {
+    regression {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+
+loom {
+    mods {
+        koreanchat { sourceSet sourceSets.main }
+        koreanchat_regression { sourceSet sourceSets.regression }
+    }
+    runs {
+        regression {
+            server()
+            source sourceSets.regression
+            runDir 'build/regression-server'
+            vmArg '-ea'
+            programArg '--nogui'
+        }
+    }
+}
+
+tasks.register('prepareChatRegression', Copy) {
+    from 'src/regression/runtime'
+    into 'build/regression-server'
+}
+
+tasks.named('runRegression') {
+    dependsOn regressionClasses, prepareChatRegression
+    doLast {
+        if (!file('build/regression-server/logs/latest.log').text.contains('Chat regression passed:')) {
+            throw new GradleException('Chat regression failed; see build/regression-server/logs/latest.log')
+        }
+    }
+}
+
+check.dependsOn runRegression
+
 jar {
     from("LICENSE") {
-        rename { "${it}_${project.archivesBaseName}"}
+        rename { "${it}_${project.archives_base_name}"}
     }
 }
 

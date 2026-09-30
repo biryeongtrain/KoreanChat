@@ -10,7 +10,7 @@
   },
   "license": "All-Rights-Reserved",
   "icon": "./assets/icon.png",
-  "environment": "*",
+  "environment": "server",
   "entrypoints": {
     "main": [
       "org.karn.koreanchat.KoreanChat"
@@ -20,9 +20,12 @@
     "KoreanChat.mixins.json"
   ],
   "depends": {
-    "fabricloader": "*",
-    "fabric": "*",
-    "minecraft": ">=1.21",
-    "styledchat": "*"
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "~${minecraft_version}",
+    "java": ">=25",
+    "styledchat": ">=2.14.0",
+    "placeholder-api": ">=3.2.0",
+    "player-data-api": ">=0.11.0"
   }
 }
